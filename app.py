@@ -24,9 +24,52 @@ if st.button("🔥 开始全维度 AI 诊断"):
         st.warning("请先输入话术文本！")
     else:
         with st.spinner("AI 正在深度解析中，请稍候..."):
+            
+            # --- 【前端控场】直接在代码里组装死命令，不给大模型任何复读原文的机会 ---
+            master_prompt = f"""你是一个顶级的旅游直播带货话术教练。请对以下话术进行全维度深度评估。
+
+【待评估的话术文本】：
+{text_input}
+
+【评估维度】：
+{criteria}
+
+【合规敏感词（若话术中包含以下词汇，请在 sensitive_risk 中指出）】：
+{sensitive_words}
+
+【核心死命令】：
+你必须且只能输出严格的 JSON 格式，绝对不要包含任何 Markdown 格式符号（如 ```json 等），不要包含任何换行或前言碎话。直接以大括号 {{ 开头，以大括号 }} 结尾。
+
+必须严格按照以下标准的 JSON 格式输出：
+{{
+  "total_score": 85,
+  "radar_data": {{
+    "体验策略": 4,
+    "功能策略": 3,
+    "信任策略": 5,
+    "稀缺性策略": 4,
+    "激励策略": 4,
+    "定位策略": 3,
+    "承诺策略": 2
+  }},
+  "comments": {{
+    "体验策略": "原文举例并点评...",
+    "功能策略": "原文举例并点评...",
+    "信任策略": "原文举例并点评...",
+    "稀缺性策略": "原文举例并点评...",
+    "激励策略": "原文举例并点评...",
+    "定位策略": "原文举例并点评...",
+    "承诺策略": "原文举例并点评..."
+  }},
+  "sensitive_risk": "发现敏感词或写无风险",
+  "suggestions": ["建议1", "建议2"]
+}}
+"""
+
             headers = {"Authorization": f"Bearer {DIFY_API_KEY}", "Content-Type": "application/json"}
+            # 把组装好的无敌控场提示词，直接塞进 Dify 的 text 变量里投喂过去！
             data = {
-                "inputs": {"text": text_input, "criteria": criteria, "sensitive_words": sensitive_words},
+                "inputs": {"text": master_prompt, "criteria": criteria, "sensitive_words": sensitive_words},
                 "response_mode": "streaming",
                 "user": "streamlit_user"
             }
@@ -40,7 +83,6 @@ if st.button("🔥 开始全维度 AI 诊断"):
                         if decoded_line.startswith("data:"):
                             try:
                                 log_json = json.loads(decoded_line[5:])
-                                # 【精准过滤】只抓取大模型实际生成的文本块(text_chunk)，彻底丢弃节点输入的回显
                                 if log_json.get('event') == 'text_chunk':
                                     ai_output += log_json.get('data', {}).get('text', '')
                                 elif 'answer' in log_json:
@@ -52,13 +94,9 @@ if st.button("🔥 开始全维度 AI 诊断"):
                 if "</think>" in ai_output:
                     ai_output = ai_output.split("</think>")[-1]
 
-                # 【核心修复】从后往前找最后一个大括号，确保拿到的是AI输出的JSON，而不是前面的回显
-                json_str = ""
-                matches = list(re.finditer(r'\{.*\}', ai_output, re.DOTALL))
-                if matches:
-                    json_str = matches[-1].group(0) # 拿最后一个，绝对是AI生成的打分JSON
-                else:
-                    json_str = ai_output
+                # 提取 JSON 
+                match = re.search(r'\{.*\}', ai_output, re.DOTALL)
+                json_str = match.group(0) if match else ai_output
                 
                 try:
                     res_json = json.loads(json_str)
