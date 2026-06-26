@@ -18,7 +18,7 @@ sensitive_words = st.sidebar.text_input("敏感词词库（用逗号隔开）", 
 
 # Dify API 配置
 DIFY_API_URL = "https://api.dify.ai/v1/workflows/run"
-DIFY_API_KEY = "这里替换成你在Dify申请的API_KEY"
+DIFY_API_KEY = "app-W35824eSzCai116xo9IecS8h"
 
 text_input = st.text_area("请粘贴需要评估的主播话术文本：", height=300)
 
