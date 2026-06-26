@@ -24,17 +24,15 @@ if st.button("🔥 开始全维度 AI 诊断"):
         st.warning("请先输入话术文本！")
     else:
         with st.spinner("AI 正在深度解析中，请稍候..."):
-            # 开启流式传输，直接监听大模型的嘴巴，不再通过 Dify 输出节点转交
             headers = {"Authorization": f"Bearer {DIFY_API_KEY}", "Content-Type": "application/json"}
             data = {
                 "inputs": {"text": text_input, "criteria": criteria, "sensitive_words": sensitive_words},
-                "response_mode": "streaming",  # 更改为流式，直接扒日志
+                "response_mode": "streaming",
                 "user": "streamlit_user"
             }
             try:
                 response = requests.post(DIFY_API_URL, json=data, headers=headers, stream=True)
                 
-                # 从流式日志里疯狂搜刮大模型文本
                 ai_output = ""
                 for line in response.iter_lines():
                     if line:
@@ -42,8 +40,8 @@ if st.button("🔥 开始全维度 AI 诊断"):
                         if decoded_line.startswith("data:"):
                             try:
                                 log_json = json.loads(decoded_line[5:])
-                                # 只要发现工作流里有大模型在说话的痕迹（text 或者是 answer），直接全量拼接
-                                if 'event' in log_json and log_json['event'] == 'text_chunk':
+                                # 【精准过滤】只抓取大模型实际生成的文本块(text_chunk)，彻底丢弃节点输入的回显
+                                if log_json.get('event') == 'text_chunk':
                                     ai_output += log_json.get('data', {}).get('text', '')
                                 elif 'answer' in log_json:
                                     ai_output += log_json.get('answer', '')
@@ -54,9 +52,13 @@ if st.button("🔥 开始全维度 AI 诊断"):
                 if "</think>" in ai_output:
                     ai_output = ai_output.split("</think>")[-1]
 
-                # 提取 JSON
-                match = re.search(r'\{.*\}', ai_output, re.DOTALL)
-                json_str = match.group(0) if match else ai_output
+                # 【核心修复】从后往前找最后一个大括号，确保拿到的是AI输出的JSON，而不是前面的回显
+                json_str = ""
+                matches = list(re.finditer(r'\{.*\}', ai_output, re.DOTALL))
+                if matches:
+                    json_str = matches[-1].group(0) # 拿最后一个，绝对是AI生成的打分JSON
+                else:
+                    json_str = ai_output
                 
                 try:
                     res_json = json.loads(json_str)
@@ -97,7 +99,7 @@ if st.button("🔥 开始全维度 AI 诊断"):
                         st.markdown(f"**【{k}】**：{v}")
                 else:
                     st.info("💡 详细诊断文本：")
-                    st.text(ai_output if ai_output else "未监听到模型输出，请检查API_KEY。")
+                    st.text(ai_output)
                     
                 st.subheader("💡 导师优化建议")
                 sugs = res_json.get("suggestions", [])
