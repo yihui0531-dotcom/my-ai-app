@@ -43,14 +43,7 @@ if password == "123456": # 网页访问密码
                         st.error(f"Dify未正常返回数据，请检查Dify工作流的END节点是否配置了输出。Dify返回信息：{result}")
                         st.stop()
                         
-                   ai_output = ""
-if 'data' in result and 'outputs' in result['data']:
-    outputs = result['data']['outputs']
-
-    ai_output = outputs.get('text') or outputs.get('answer') or outputs.get('output') or str(outputs)
-
-if not ai_output and 'answer' in result:
-    ai_output = result['answer']
+                   ai_output = result['data']['outputs'].get('text', '')
                     
                     if not ai_output:
                         st.error("Dify输出的文本为空，请检查大模型节点或END节点设置。")
