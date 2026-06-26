@@ -6,12 +6,36 @@ import json
 from openai import OpenAI
 
 st.set_page_config(page_title="AI带货话术评估系统", layout="wide")
+
+# ================= 🔒 网页密码设置中心 =================
+# 可以在下方双引号里，改成你想设置的任何密码（比如 "666888"）
+WEB_PASSWORD = "1" 
+
+# 初始化网页密码状态
+if "password_correct" not in st.session_state:
+    st.session_state["password_correct"] = False
+
+def check_password():
+    if st.session_state["password_input"] == WEB_PASSWORD:
+        st.session_state["password_correct"] = True
+        del st.session_state["password_input"]  # 清除输入框内容
+    else:
+        st.session_state["password_correct"] = False
+        st.error("🔑 密码错误，请重新输入！")
+
+# 如果没输入过正确密码，直接锁死网页，强制展示登录界面
+if not st.session_state["password_correct"]:
+    st.title("🔒 欢迎使用系统（请先登录）")
+    st.text_input("请输入专用的系统访问密码：", type="password", key="password_input", on_change=check_password)
+    st.stop() # 密码不对就卡在这里，不向下执行
+# =====================================================
+
+# 🔓 密码正确，正式放行进入系统
 st.title("🏆 顶级直播带货话术 AI 评估系统 (火山引擎直连版)")
 
 # --- ⚙️ 左侧配置中心 ---
 st.sidebar.header("⚙️ 评估配置中心")
 
-# 1. 让用户直接在网页侧边栏填写火山引擎的凭证
 ark_key = st.sidebar.text_input("1. 火山引擎 API_KEY", type="password", help="以 vapi- 开头的密钥")
 ark_endpoint = st.sidebar.text_input("2. 模型接入点 ID (Endpoint)", placeholder="ep-2026xxxxxxxx-xxxxx")
 
@@ -30,13 +54,11 @@ if st.button("🔥 开始全维度 AI 诊断"):
     else:
         with st.spinner("火山引擎 DeepSeek 正在全力解析中，请稍候..."):
             try:
-                # 初始化火山引擎 Ark 客户端
                 client = OpenAI(
                     api_key=ark_key,
                     base_url="https://ark.cn-beijing.volces.com/api/v3"
                 )
                 
-                # 组装完美提示词
                 master_prompt = f"""你是一个顶级的旅游直播带货话术教练。请对以下话术进行全维度深度评估。
 
 【待评估的话术文本】：
@@ -76,7 +98,6 @@ if st.button("🔥 开始全维度 AI 诊断"):
   "suggestions": ["建议1", "建议2"]
 }}
 """
-                # 请求大模型
                 completion = client.chat.completions.create(
                     model=ark_endpoint,
                     messages=[
@@ -88,21 +109,17 @@ if st.button("🔥 开始全维度 AI 诊断"):
                 
                 ai_output = completion.choices[0].message.content
                 
-                # 剥离思考标签
                 if "</think>" in ai_output:
                     ai_output = ai_output.split("</think>")[-1]
 
-                # 提取并解析 JSON
                 match = re.search(r'\{.*\}', ai_output, re.DOTALL)
                 json_str = match.group(0) if match else ai_output
                 res_json = json.loads(json_str)
                 
-                # 纠正雷达图维度的 Key
                 v_list = [k.strip() for k in criteria.replace("，", "、").replace(",", "、").split("、") if k.strip()]
                 if "radar_data" not in res_json or not isinstance(res_json["radar_data"], dict):
                     res_json["radar_data"] = {k: 3 for k in v_list}
 
-                # --- 🎨 成功渲染前端 ---
                 st.balloons()
                 st.success(f"🚀 诊断成功！综合评分：{res_json.get('total_score', 80)} 分")
                 
