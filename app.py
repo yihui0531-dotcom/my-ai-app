@@ -1,32 +1,43 @@
 import streamlit as st
-import requests
-import json
 import pandas as pd
 import plotly.express as px
 import re
+import json
+from openai import OpenAI
 
 st.set_page_config(page_title="AI带货话术评估系统", layout="wide")
-st.title("🏆 顶级直播带货话术 AI 评估系统")
+st.title("🏆 顶级直播带货话术 AI 评估系统 (火山引擎直连版)")
+
+# --- ⚙️ 左侧配置中心 ---
+st.sidebar.header("⚙️ 评估配置中心")
+
+# 1. 让用户直接在网页侧边栏填写火山引擎的凭证
+ark_key = st.sidebar.text_input("1. 火山引擎 API_KEY", type="password", help="以 vapi- 开头的密钥")
+ark_endpoint = st.sidebar.text_input("2. 模型接入点 ID (Endpoint)", placeholder="ep-2026xxxxxxxx-xxxxx")
 
 default_criteria = "体验策略、功能策略、信任策略、稀缺性策略、激励策略、定位策略、承诺策略"
-st.sidebar.header("⚙️ 评估配置中心")
 criteria = st.sidebar.text_area("自定义评判维度", value=default_criteria, height=100)
 sensitive_words = st.sidebar.text_input("敏感词词库（用逗号隔开）", value="第一,最好,绝无仅有")
 
-# Dify API 配置
-DIFY_API_URL = "https://api.dify.ai/v1/workflows/run"
-DIFY_API_KEY = "app-W35824eSzCai116xo9IecS8h"
-
+# --- 主界面 ---
 text_input = st.text_area("请粘贴需要评估的主播话术文本：", height=300)
 
 if st.button("🔥 开始全维度 AI 诊断"):
     if not text_input:
         st.warning("请先输入话术文本！")
+    elif not ark_key or not ark_endpoint:
+        st.error("请先在左侧配置中心填写你在火山引擎申请的『API_KEY』和『接入点ID』！")
     else:
-        with st.spinner("AI 正在深度解析中，请稍候..."):
-            
-            # --- 【前端控场】直接在代码里组装死命令，不给大模型任何复读原文的机会 ---
-            master_prompt = f"""你是一个顶级的旅游直播带货话术教练。请对以下话术进行全维度深度评估。
+        with st.spinner("火山引擎 DeepSeek 正在全力解析中，请稍候..."):
+            try:
+                # 初始化火山引擎 Ark 客户端
+                client = OpenAI(
+                    api_key=ark_key,
+                    base_url="https://ark.cn-beijing.volces.com/api/v3"
+                )
+                
+                # 组装完美提示词
+                master_prompt = f"""你是一个顶级的旅游直播带货话术教练。请对以下话术进行全维度深度评估。
 
 【待评估的话术文本】：
 {text_input}
@@ -38,7 +49,7 @@ if st.button("🔥 开始全维度 AI 诊断"):
 {sensitive_words}
 
 【核心死命令】：
-你必须且只能输出严格的 JSON 格式，绝对不要包含任何 Markdown 格式符号（如 ```json 等），不要包含任何换行或前言碎话。直接以大括号 {{ 开头，以大括号 }} 结尾。
+你必须且只能输出严格的 JSON 格式。直接以大括号 {{ 开头，以大括号 }} 结尾，千万不要包含任何 ```json 等Markdown标记！
 
 必须严格按照以下标准的 JSON 格式输出：
 {{
@@ -53,71 +64,47 @@ if st.button("🔥 开始全维度 AI 诊断"):
     "承诺策略": 2
   }},
   "comments": {{
-    "体验策略": "原文举例并点评...",
-    "功能策略": "原文举例并点评...",
-    "信任策略": "原文举例并点评...",
-    "稀缺性策略": "原文举例并点评...",
-    "激励策略": "原文举例并点评...",
-    "定位策略": "原文举例并点评...",
-    "承诺策略": "原文举例并点评..."
+    "体验策略": "结合话术原文举例并深入点评...",
+    "功能策略": "结合话术原文举例并深入点评...",
+    "信任策略": "结合话术原文举例并深入点评...",
+    "稀缺性策略": "结合话术原文举例并深入点评...",
+    "激励策略": "结合话术原文举例并深入点评...",
+    "定位策略": "结合话术原文举例并深入点评...",
+    "承诺策略": "结合话术原文举例并深入点评..."
   }},
   "sensitive_risk": "发现敏感词或写无风险",
   "suggestions": ["建议1", "建议2"]
 }}
 """
-
-            headers = {"Authorization": f"Bearer {DIFY_API_KEY}", "Content-Type": "application/json"}
-            # 把组装好的无敌控场提示词，直接塞进 Dify 的 text 变量里投喂过去！
-            data = {
-                "inputs": {"text": master_prompt, "criteria": criteria, "sensitive_words": sensitive_words},
-                "response_mode": "streaming",
-                "user": "streamlit_user"
-            }
-            try:
-                response = requests.post(DIFY_API_URL, json=data, headers=headers, stream=True)
+                # 请求大模型
+                completion = client.chat.completions.create(
+                    model=ark_endpoint,
+                    messages=[
+                        {"role": "system", "content": "You are a professional livestreaming coach."},
+                        {"role": "user", "content": master_prompt}
+                    ],
+                    temperature=0.3
+                )
                 
-                ai_output = ""
-                for line in response.iter_lines():
-                    if line:
-                        decoded_line = line.decode('utf-8')
-                        if decoded_line.startswith("data:"):
-                            try:
-                                log_json = json.loads(decoded_line[5:])
-                                if log_json.get('event') == 'text_chunk':
-                                    ai_output += log_json.get('data', {}).get('text', '')
-                                elif 'answer' in log_json:
-                                    ai_output += log_json.get('answer', '')
-                            except:
-                                pass
-
+                ai_output = completion.choices[0].message.content
+                
                 # 剥离思考标签
                 if "</think>" in ai_output:
                     ai_output = ai_output.split("</think>")[-1]
 
-                # 提取 JSON 
+                # 提取并解析 JSON
                 match = re.search(r'\{.*\}', ai_output, re.DOTALL)
                 json_str = match.group(0) if match else ai_output
+                res_json = json.loads(json_str)
                 
-                try:
-                    res_json = json.loads(json_str)
-                except Exception:
-                    res_json = {}
-                
-                if not isinstance(res_json, dict): res_json = {}
-                
-                # 纠正雷达图 Key
-                if "radar_data" not in res_json:
-                    for k in ["radar", "radarData", "数据", "评分"]:
-                        if k in res_json: res_json["radar_data"] = res_json[k]; break
-
+                # 纠正雷达图维度的 Key
                 v_list = [k.strip() for k in criteria.replace("，", "、").replace(",", "、").split("、") if k.strip()]
                 if "radar_data" not in res_json or not isinstance(res_json["radar_data"], dict):
                     res_json["radar_data"] = {k: 3 for k in v_list}
-                if "total_score" not in res_json: res_json["total_score"] = 80
 
-                # --- 前端渲染 ---
+                # --- 🎨 成功渲染前端 ---
                 st.balloons()
-                st.success(f"评估完成！综合评分：{res_json.get('total_score')} 分")
+                st.success(f"🚀 诊断成功！综合评分：{res_json.get('total_score', 80)} 分")
                 
                 col1, col2 = st.columns([1, 1])
                 with col1:
@@ -136,15 +123,12 @@ if st.button("🔥 开始全维度 AI 诊断"):
                     for k, v in res_json.get("comments", {}).items():
                         st.markdown(f"**【{k}】**：{v}")
                 else:
-                    st.info("💡 详细诊断文本：")
                     st.text(ai_output)
                     
                 st.subheader("💡 导师优化建议")
                 sugs = res_json.get("suggestions", [])
-                if isinstance(sugs, list) and sugs:
-                    for sug in sugs: st.info(sug)
-                else:
-                    st.info("建议多增加话术的互动性和稀缺性提示。")
+                for sug in sugs: 
+                    st.info(sug)
                     
             except Exception as e:
-                st.error(f"系统运行遇到小障碍: {e}")
+                st.error(f"连接火山引擎出错，请检查配置参数是否正确。错误详情: {e}")
