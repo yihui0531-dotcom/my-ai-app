@@ -8,7 +8,7 @@ from openai import OpenAI
 st.set_page_config(page_title="AI带货话术评估系统", layout="wide")
 
 # ================= 🔒 网页密码设置中心 =================
-# 在下方双引号里，改成你想设置的任何密码（例如 "888888"）
+# 你可以在下方双引号里，改成你想设置的任何密码（例如 "888888"）
 WEB_PASSWORD = "1" 
 # =====================================================
 
@@ -22,20 +22,33 @@ input_web_password = st.sidebar.text_input("🔑 系统访问密码", type="pass
 
 st.sidebar.markdown("---") 
 
-ark_key = st.sidebar.text_input("1. 火山引擎 API_KEY", type="password", value="")
-ark_endpoint = st.sidebar.text_input("2. 模型接入点 ID", value="", placeholder="ep-2026xxxxxxxx-xxxxx")
+# 🚀 自动填上你专属的 KEY 和 ID 作为默认值 (通过 value 参数写死)
+ark_key = st.sidebar.text_input(
+    "1. 火山引擎 API_KEY", 
+    type="password", 
+    value="ark-a266d71a-6ec6-4a57-bba0-bd517e6474b3-55690"
+)
+ark_endpoint = st.sidebar.text_input(
+    "2. 模型接入点 ID", 
+    value="ep-20260626232937-5x6hg"
+)
 
 default_criteria = "体验策略、功能策略、信任策略、稀缺性策略、激励策略、定位策略、承诺策略"
 criteria = st.sidebar.text_area("自定义评判维度", value=default_criteria, height=100)
 sensitive_words = st.sidebar.text_input("敏感词词库（用逗号隔开）", value="第一,最好,绝无仅有")
 
-# --- 主界面 ---
+# --- 主界面逻辑控制 ---
+# 🔒 巧妙拦截：如果密码没输或者输错了，不展示输入框，直接在主界面给出高亮引导
+if input_web_password != WEB_PASSWORD:
+    st.markdown("### ")
+    st.info("👈 **【系统未解锁】** 请先在左侧侧边栏输入正确的『**系统访问密码**』，解锁后即可开启主播话术评估系统。")
+    st.stop() # 密码不对时，代码在此处强行中断，后面的输入框和按钮根本不会渲染出来
+
+# 🔓 密码正确，以下内容才会显示
 text_input = st.text_area("请粘贴需要评估的主播话术文本：", height=300)
 
 if st.button("🔥 开始全维度 AI 诊断"):
-    if input_web_password != WEB_PASSWORD:
-        st.sidebar.warning("🔒 请先在左侧输入正确的系统访问密码！")
-    elif not text_input:
+    if not text_input:
         st.warning("请先输入话术文本！")
     elif not ark_key or not ark_endpoint:
         st.error("请先在左侧配置中心填写API_KEY和接入点ID！")
