@@ -38,18 +38,20 @@ if password == "123456": # 网页访问密码
                     response = requests.post(DIFY_API_URL, json=data, headers=headers)
                     result = response.json()
                     
-                    # 检查 Dify 的原始返回
-                    if 'data' not in result or 'outputs' not in result['data']:
-                        st.error(f"Dify未正常返回数据，请检查Dify工作流的END节点是否配置了输出。Dify返回信息：{result}")
-                        st.stop()
-                        
-                   ai_output = result['data']['outputs'].get('text', '')
+                    # 全自动兼容搜索：不管 Dify 把答案装在哪个口袋，全抓出来
+                    ai_output = ""
+                    if 'data' in result and 'outputs' in result['data']:
+                        outputs = result['data']['outputs']
+                        ai_output = outputs.get('text') or outputs.get('answer') or outputs.get('output') or str(outputs)
                     
+                    if not ai_output and 'answer' in result:
+                        ai_output = result['answer']
+                        
                     if not ai_output:
-                        st.error("Dify输出的文本为空，请检查大模型节点或END节点设置。")
+                        st.error(f"Dify未正常返回数据，Dify返回信息：{result}")
                         st.stop()
 
-                    # 核心防崩溃清洗逻辑：用正则表达式强行提取 JSON 括号内的内容
+                    # 用正则表达式强行提取 JSON 括号内的内容
                     match = re.search(r'\{.*\}', ai_output, re.DOTALL)
                     if match:
                         json_str = match.group(0)
