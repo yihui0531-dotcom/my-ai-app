@@ -43,14 +43,12 @@ if password == "123456": # 网页访问密码
                         st.error(f"Dify未正常返回数据，请检查Dify工作流的END节点是否配置了输出。Dify返回信息：{result}")
                         st.stop()
                         
-                    # 全自动兼容搜索：不管 Dify 把答案装在哪个口袋，全抓出来
-ai_output = ""
+                   ai_output = ""
 if 'data' in result and 'outputs' in result['data']:
     outputs = result['data']['outputs']
-    # 尝试所有可能的口袋名字
+
     ai_output = outputs.get('text') or outputs.get('answer') or outputs.get('output') or str(outputs)
 
-# 如果工作流是 Chatflow 模式，答案可能会直接在最外层的 answer 里
 if not ai_output and 'answer' in result:
     ai_output = result['answer']
                     
