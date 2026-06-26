@@ -8,8 +8,8 @@ from openai import OpenAI
 st.set_page_config(page_title="AI带货话术评估系统", layout="wide")
 
 # ================= 🔒 网页密码设置中心 =================
-# 你可以在下方双引号里，改成你想设置的任何密码（例如 "888888"）
-WEB_PASSWORD = "1" 
+# 在下方双引号里，改成你想设置的任何密码（例如 "888888"）
+WEB_PASSWORD = "888888" 
 # =====================================================
 
 st.title("🏆 顶级直播带货话术 AI 评估系统 (火山引擎直连版)")
@@ -17,8 +17,9 @@ st.title("🏆 顶级直播带货话术 AI 评估系统 (火山引擎直连版)"
 # --- ⚙️ 左侧配置中心 ---
 st.sidebar.header("⚙️ 评估配置中心")
 
-# 把系统访问密码放在侧边栏的最上方
-input_web_password = st.sidebar.text_input("🔑 请输入系统访问密码", type="password", help="只有输入正确的密码才能使用诊断功能")
+# 1. 在左侧最上方加入密码框
+input_web_password = st.sidebar.text_input("🔑 系统访问密码", type="password")
+st.sidebar.caption("💡 提示：内部系统，需填写正确密码方可激活诊断。")
 
 st.sidebar.markdown("---") # 分割线
 
@@ -33,14 +34,10 @@ sensitive_words = st.sidebar.text_input("敏感词词库（用逗号隔开）", 
 text_input = st.text_area("请粘贴需要评估的主播话术文本：", height=300)
 
 if st.button("🔥 开始全维度 AI 诊断"):
-    if not text_input:
-        st.warning("请先输入话术文本！")
-    # 🚨 核心拦截逻辑：如果密码没输或者输错了，直接弹窗警告并拦截
-    elif input_web_password != WEB_PASSWORD:
-        st.error("⛔ 系统访问密码错误或未填写！请在左侧侧边栏填写正确的『系统访问密码』再试。")
-    elif not ark_key or not ark_endpoint:
-        st.error("请先在左侧配置中心填写你在火山引擎申请的『API_KEY』和『接入点ID』！")
-    else:
+    # 🤫 优雅拦截核心逻辑：只有密码完全正确，且输入了文本和配置，才会向下执行大模型调用。
+    # 如果密码不对，网页只会安静地刷新，绝不报错、绝不吐出红字，也绝不调用大模型。
+    if input_web_password == WEB_PASSWORD and text_input and ark_key and ark_endpoint:
+        
         with st.spinner("火山引擎 DeepSeek 正在全力解析中，请稍候..."):
             try:
                 # 初始化火山引擎 Ark 客户端
@@ -78,18 +75,4 @@ if st.button("🔥 开始全维度 AI 诊断"):
   }},
   "comments": {{
     "体验策略": "结合话术原文举例并深入点评...",
-    "功能策略": "结合话术原文举例并深入点评...",
-    "信任策略": "结合话术原文举例并深入点评...",
-    "稀缺性策略": "结合话术原文举例并深入点评...",
-    "激励策略": "结合话术原文举例并深入点评...",
-    "定位策略": "结合话术原文举例并深入点评...",
-    "承诺策略": "结合话术原文举例并深入点评..."
-  }},
-  "sensitive_risk": "发现敏感词或写无风险",
-  "suggestions": ["建议1", "建议2"]
-}}
-"""
-                # 请求大模型
-                completion = client.chat.completions.create(
-                    model=ark_endpoint,
-                    messages=
+    "功能策略": "结合话术
