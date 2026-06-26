@@ -83,7 +83,7 @@ if password == "123456": # 网页访问密码
                                 break
                         # 如果实在没有，丢进去一组默认满分数据，防止页面报 'radar_data' 错误
                         if "radar_data" not in res_json:
-                            res_json["radar_data"] = {k.strip(): 3 for k in criteria.split("，") if k.strip()}
+                            res_json["radar_data"] = {k.strip(): 3 for k in criteria.split("、") if k.strip()}
                     
                     # 防止 total_score 缺失导致显示 None
                     if "total_score" not in res_json:
