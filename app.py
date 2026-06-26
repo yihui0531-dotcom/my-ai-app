@@ -14,9 +14,8 @@ password = st.sidebar.text_input("请输入访问密码", type="password")
 default_criteria = "体验策略、功能策略、信任策略、稀缺性策略、激励策略、定位策略、承诺策略"
 criteria = st.sidebar.text_area("自定义评判维度", value=default_criteria, height=100)
 sensitive_words = st.sidebar.text_input("敏感词词库（用逗号隔开）", value="第一,最好,绝无仅有")
-
 # Dify API 配置（直接把你在第二步获取的填在这里）
-DIFY_API_URL = "[https://api.dify.ai/v1/workflows/run](https://api.dify.ai/v1/workflows/run)"
+DIFY_API_URL = "https://api.dify.ai/v1/workflows/run"
 DIFY_API_KEY = "app-W35824eSzCai116xo9IecS8h"
 
 if password == "123456": # 这里是你的网页登录密码，可以自己改
